@@ -5,10 +5,11 @@ VERSION?=	$(shell ../get_version.py ../../src/rdkafka.h)
 BUILD_NUMBER?= 1
 
 MOCK_CONFIG?=default
+MOCK_EXTRA_ARGS?=
 
 RESULT_DIR?=pkgs-$(VERSION)-$(BUILD_NUMBER)-$(MOCK_CONFIG)
 
-all: rpm
+all: prepare_mock rpm
 
 
 SOURCES:
@@ -31,7 +32,7 @@ srpm: build_prepare
 		--define "__version $(VERSION)" \
 		--define "__release $(BUILD_NUMBER)" \
 		--resultdir=$(RESULT_DIR) \
-		--no-clean --no-cleanup-after \
+		$(MOCK_EXTRA_ARGS) \
 		--buildsrpm \
 		--spec=librdkafka.spec \
 		--sources=SOURCES
@@ -43,7 +44,7 @@ rpm: srpm
 		--define "__version $(VERSION)"\
 		--define "__release $(BUILD_NUMBER)"\
 		--resultdir=$(RESULT_DIR) \
-		--no-clean --no-cleanup-after \
+		$(MOCK_EXTRA_ARGS) \
 		--rebuild $(RESULT_DIR)/$(PACKAGE_NAME)*.src.rpm
 	@echo "======= Binary RPMs now available in $(RESULT_DIR) ======="
 
@@ -58,6 +59,11 @@ distclean: clean
 	rm -f build.log root.log state.log available_pkgs installed_pkgs \
 		*.rpm *.tar.gz
 
+
+prepare_mock:
+	/usr/bin/mock -r $(MOCK_CONFIG) --init
+	/usr/bin/mock -r $(MOCK_CONFIG) --no-cleanup-after --install epel-release shadow-utils
+
 # Prepare ubuntu 14.04 for building RPMs with mock.
 #  - older versions of mock needs the config file to reside in /etc/mock,
 #    so we copy it there.
@@ -71,8 +77,6 @@ prepare_ubuntu:
 	cp *.cfg /etc/mock/
 	addgroup --system mock || true
 	adduser $$(whoami) mock
-	/usr/bin/mock -r $(MOCK_CONFIG) --init
-	/usr/bin/mock -r $(MOCK_CONFIG) --no-cleanup-after --install epel-release shadow-utils
 
 prepare_centos:
 	yum install -y -q mock make git
